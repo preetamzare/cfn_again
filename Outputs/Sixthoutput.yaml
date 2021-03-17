@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Now lets us join function.
+Description: Now lets us join function using AWS Account.
 
 Parameters:
   FMWKeys:
