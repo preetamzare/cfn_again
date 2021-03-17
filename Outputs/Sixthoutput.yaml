@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Now lets us join function.
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Please provide the right key
+  FMWEnvironment:
+    Type: String
+    Description: Select from the drop down list
+    Default: Dev
+    AllowedValues:
+      - Prod
+      - Dev
+      - QA
+
+Mappings:
+  FMWEnvironmentMap:
+    Dev:
+      Size: t2.micro
+    Prod:
+      Size: t2. medium
+    QA:
+      Size: t2.small
+
+Conditions:
+  DevQASGCond: !Or [!Equals [FMWEnvironment, Dev], !Equals [FMWEnvironment, QA]]
+Resources:
+Outputs:
