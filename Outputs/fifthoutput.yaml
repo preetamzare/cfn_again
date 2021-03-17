@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Let us join condition
+Description: Let us join condition but not joined.
 
 Parameters:
   FMWKeys:

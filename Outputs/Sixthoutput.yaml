@@ -25,5 +25,50 @@ Mappings:
 
 Conditions:
   DevQASGCond: !Or [!Equals [FMWEnvironment, Dev], !Equals [FMWEnvironment, QA]]
+
 Resources:
+  MyEC2Instance01:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0de9f803fcac87f46
+      InstanceType: !FindInMap
+        - FMWEnvironmentMap
+        - !Ref FMWEnvironment
+        - Size
+      KeyName: !Ref FMWKeys
+      SecurityGroups: !If [DevQASGCond, [!Ref DevQASG], !Ref AWS::NoValue]
+      Tags:
+        - Key: Name
+          Value: !Ref FMWEnvironment
+  DevQASG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DevQA SG
+      GroupName: DevQASG
+      Tags:
+        - Key: Name
+          Value: DevQASG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow 22
+
 Outputs:
+  InstanceId:
+    Description: Instance ID
+    Value: !Ref MyEC2Instance01
+  InstanceAZ:
+    Description: Instance Availability Zone
+    Value: !GetAtt MyEC2Instance01.AvailabilityZone
+    Export:
+      Name: !Sub ${AWS::StackName}-InstanceAZ
+  InstancePublicIP:
+    Description: Public IP of the instance
+    Value: !GetAtt MyEC2Instance01.PublicIp
+  InstanceSG:
+    Description: Security Group of the instance
+    Value: !Ref DevQASG
+    Export:
+      Name: !Join ["-", [DevQSG, !Ref AWS::AccountId]]
