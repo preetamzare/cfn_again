@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Taking input from the previous cfn
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select Key of your choice.
+
+Resources:
+  MyEC22:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0de9f803fcac87f46
+      InstanceType: t2.micro
+      KeyName: !Ref FMWKeys
+      Tags:
+        - Key: Name
+          Value: MyEC22
+      SecurityGroups: 
+        - !ImportValue DevQASG
+      AvailabilityZone: !ImportValue Dev-InstanceAZ

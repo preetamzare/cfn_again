@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Or Condition
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select one of the Key
+  FMWEnv:
+    Type: String
+    Description: Select the environment
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - QA
+      - Prod
+    ConstraintDescription: Must select the environment
+
+Mappings:
+  FMWEnvMap:
+    Dev:
+      Size: t2.micro
+    QA:
+      Size: t2.small
+    Prod:
+      Size: t2.medium
+
+Conditions:
+  ProdSGCond: !Equals [!Ref FMWEnv, Prod]
+  QADevSGCond: !Or [!Equals [!Ref FMWEnv, QA], !Equals [!Ref FMWEnv, Dev]]
+
+Resources:
+  MyEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0de9f803fcac87f46
+      InstanceType: !FindInMap
+        - FMWEnvMap
+        - !Ref FMWEnv
+        - Size
+      KeyName: !Ref FMWKeys
+      SecurityGroups: !If [ProdSGCond, [!Ref ProdSG], [!Ref QADevSG]]
+      Tags:
+        - Key: Name
+          Value: !Ref FMWEnv
+  ProdSG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: ProdSGCond
+    Properties:
+      GroupDescription: Production Group for 80 and 443 Port
+      GroupName: ProductionSG
+      Tags:
+        - Key: Name
+          Value: ProdSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow 80 port
+  QADevSG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: QADevSGCond
+    Properties:
+      GroupDescription: Dev Group for 80 and 443 Port
+      GroupName: QADevSG
+      Tags:
+        - Key: Name
+          Value: DevSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 22
+          FromPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow 22 port

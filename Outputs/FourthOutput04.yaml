@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Use outputs and conditions
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select the Keys from dropdown
+  EnvironmentType:
+    Type: String
+    Description: Select the environment to deploy your EC2 instance
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - QA
+      - Prod
+
+Mappings:
+  FMWEnvMap:
+    Dev:
+      Size: t2.micro
+    QA:
+      Size: t2.small
+    Prod:
+      Size: t2.medium
+  FMWReMap:
+    eu-central-1:
+      ImageId: ami-0de9f803fcac87f46
+    us-east-1:
+      ImageId: ami-038f1ca1bd58a5790
+
+Conditions:
+  DevQASGCond: !Or [!Equals [!Ref EnvironmentType, Dev], !Equals [!Ref EnvironmentType, QA]]
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - FMWReMap
+        - !Ref AWS::Region
+        - ImageId
+      InstanceType: !FindInMap
+        - FMWEnvMap
+        - !Ref EnvironmentType
+        - Size
+      KeyName: !Ref FMWKeys
+      SecurityGroups: !If [DevQASGCond, [!Ref DevQASG], [!Ref AWS::NoValue]]
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentType
+  DevQASG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: DevQASGCond
+    Properties:
+      GroupDescription: Allow SSH for Dev and QA Instance
+      GroupName: AllowSSH
+      Tags:
+        - Key: Name
+          Value: AllowSSHDevQA
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          FromPort: 22
+          Description: 22 TCP port allowed
+
+Outputs:
+  MyInstanceId:
+    Value: !Ref MyEC2Instance
+    Description: ID Of EC2 Instance
+  InstanceDNS:
+    Value: !GetAtt MyEC2Instance.PublicDnsName
+    Description: DNS Name of the Instance
+  InstancePublicIP:
+    Value: !GetAtt MyEC2Instance.PublicIp
+    Description: Public IP of the instance
+  InstanceAZ:
+    Value: !GetAtt MyEC2Instance.AvailabilityZone
+    Description: Instance AZ
+    Export:
+      Name: !Sub ${AWS::StackName}-MyInstanceAZ
+  DevQASGName:
+    Description: Dev_QA Security Group
+    Condition: DevQASGCond
+    Value: !Ref DevQASG
+    Export:
+      Name: DevQASGcommon

@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Third CFN Template
+Resources:
+  thirdec2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-02f9ea74050d6f812
+      InstanceType: t2.micro
+      KeyName: Public-Testing-eu-central-1
+      SecurityGroups:
+        - default
+        - !Ref sshandhttp
+  sshandhttp:
+   Type: AWS::EC2::SecurityGroup
+   Properties:
+     GroupDescription: Allow SSH and HTTP
+     GroupName: SSH_HTTP
+     Tags:
+      - Key: Name
+        Value: SSH_HTTP
+     SecurityGroupIngress:
+       - IpProtocol: tcp
+         FromPort: 22
+         ToPort: 22
+         CidrIp: 0.0.0.0/0
+         Description: Allow 22 from corporate
+       - IpProtocol: tcp
+         FromPort: 80
+         ToPort: 80
+         CidrIp: 0.0.0.0/0
+         Description: Allow 80 from the world

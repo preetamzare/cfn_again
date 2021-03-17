@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy instance in specific subnet in your VPC.
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select the right keypair
+
+Resources:
+  MySecondInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0de9f803fcac87f46
+      SubnetId: subnet-0d9dfbf0b2d8dd4a6
+      KeyName: !Ref FMWKeys
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - sg-0075bd2563b886103

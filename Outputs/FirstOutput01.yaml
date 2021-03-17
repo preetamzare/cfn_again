@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: First example of output version
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Pickup the Key
+  FMWEnvType:
+    Type: String
+    Description: Pick one value from the drop for the Environment Type
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+      - QA
+
+Mappings:
+  FMWEnvMap:
+    Dev:
+      Size: t2.micro
+    QA:
+      Size: t2.small
+    Prod:
+      Size: t2.medium
+  FMWReMap:
+    eu-central-1:
+      ImageId: ami-0de9f803fcac87f46
+    us-east-1:
+      ImageId: ami-038f1ca1bd58a5790
+
+Conditions:
+  MyEIPCond: !Equals [!Ref FMWEnvType, Prod]
+  DevQASGCond: !Or [!Equals [!Ref FMWEnvType, QA], !Equals [!Ref FMWEnvType, Dev]]
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - FMWReMap
+        - !Ref AWS::Region
+        - ImageId
+      InstanceType: !FindInMap
+        - FMWEnvMap
+        - !Ref FMWEnvType
+        - Size
+      KeyName: !Ref FMWKeys
+      SecurityGroups: !If [DevQASGCond, [!Ref DevQASG], [!Ref AWS::NoValue]]
+      Tags:
+        - Key: Name
+          Value: !Ref FMWEnvType
+  DevQASG:
+      Type: AWS::EC2::SecurityGroup
+    Condition: DevQASGCond
+    Properties:
+      GroupDescription: "Allow SSH from VPN"
+      GroupName: AllowSSH
+      Tags:
+        - Key: SGName
+          Value: AllowSSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow SSH from VPN
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Condition: MyEIPCond
+    Properties:
+      InstanceId: !Ref MyEC2Instance
+
+Outputs:
+  MyEC2InstanceId:
+    Description: My EC2 Instance ID
+    Value: !Ref MyEC2Instance
+  MyEC2DNSName:
+    Description: DNS Name of the Instance
+    Value: !GetAtt MyEC2Instance.PublicDnsName
+  MyEC2PublicIP:
+    Description: Public IP of the Instance
+    Value: !GetAtt MyEC2Instance.PublicIp
+  MyEC2P:
+    Description: Get EC2 Instance AZ
+    Value: !GetAtt MyEC2Instance.AvailabilityZone

@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: First Condition CFN
+
+Parameters:
+  FMWKeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select the SSH Key for the instance
+  EnvironmentName:
+    Type: String
+    Description: Select the environment
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+
+Mappings:
+  FMWReMap:
+    us-east-1:
+      imageid: ami-038f1ca1bd58a5790
+    eu-central-1:
+      imageid: ami-0de9f803fcac87f46
+  FMWEnvMap:
+    Prod:
+      size: t2.small
+    Dev:
+      size: t2.micro
+
+Conditions:
+  EIPCondition: !Equals [!Ref EnvironmentName, Prod ]
+  SecGrpCondition: !Equals [!Ref EnvironmentName, Dev ]
+
+Resources:
+  MyEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - FMWReMap
+        - !Ref AWS::Region
+        - imageid
+      InstanceType: !FindInMap
+        - FMWEnvMap
+        - !Ref EnvironmentName
+        - size
+      KeyName: !Ref FMWKeyName
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+      SecurityGroups: !If [SecGrpCondition, [!Ref DevSecurityGroups], !Ref AWS::NoValue ]
+
+
+  DevSecurityGroups:
+    Type: AWS::EC2::SecurityGroup
+    Condition: SecGrpCondition
+    Properties:
+      GroupDescription: Allow SSH only
+      GroupName: AllowSSH
+      Tags:
+        - Key: Name
+          Value: SSHFromVPN
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: From Corporate Office
+        
+
+
+
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Condition: EIPCondition
+    Properties:
+      InstanceId: !Ref MyEC2
+

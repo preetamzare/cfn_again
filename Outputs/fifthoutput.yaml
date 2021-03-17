@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Let us join condition
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Please select the right key for your choice
+  FMVEnvironment:
+    Type: String
+    Description: Select the environment type
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+      - QA
+
+Mappings:
+  FMVEnvironmentMap:
+    Dev:
+      Size: t2.micro
+    QA:
+      Size: t2.small
+    Prod:
+      Size: t2.medium
+
+Conditions:
+  DevOASGCond:
+    !Or [!Equals [!Ref FMVEnvironment, Dev], !Equals [!Ref FMVEnvironment, QA]]
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !FindInMap
+        - FMVEnvironmentMap
+        - !Ref FMVEnvironment
+        - Size
+      KeyName: !Ref FMWKeys
+      ImageId: ami-0de9f803fcac87f46
+      Tags:
+        - Key: Name
+          Value: !Ref FMVEnvironment
+      SecurityGroups: !If [DevOASGCond, [!Ref DevQASG], !Ref AWS::NoValue]
+  DevQASG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: DevOASGCond
+    Properties:
+      GroupDescription: DevSG Group
+      GroupName: DevSGGroup
+      Tags:
+        - Key: Name
+          Value: DevSGGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          Description: Allow port 22
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  MyInstanceId:
+    Value: !Ref MyEC2Instance
+    Description: This is your Instance ID
+  InstanceAZ:
+    Value: !GetAtt MyEC2Instance.AvailabilityZone
+    Description: My Instance AZ
+    Export:
+      Name: !Sub ${AWS::StackName}-InstanceAZ
+  InstanceDevQASG:
+    Value: !Ref DevQASG
+    Description: Security group of the instance
+    Export:
+      Name: DevQASecurityGroup

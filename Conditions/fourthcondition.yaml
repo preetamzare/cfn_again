@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Not condition
+
+Parameters:
+  FMWKeys:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select from the drop down Key Pair
+  EnvironmentType:
+    Type: String
+    Description: Select the Enviroment of your choice
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - QA
+      - Prod
+
+Mappings:
+  FMWEnvMap:
+    Prod:
+      Size: t2.medium
+    Dev:
+      Size: t2.small
+    QA:
+      Size: t2.micro
+  EMWReMap:
+    eu-central-1:
+      ImageId: ami-0de9f803fcac87f46
+    us-east-1:
+      ImageId: ami-038f1ca1bd58a5790
+
+Conditions:
+  EIPCond: !Equals [!Ref EnvironmentType, Prod]
+  ProdSGCond: !Equals [!Ref EnvironmentType, Prod]
+  DevSGCond: !Not [{Condition: ProdSGCond }]
+
+Resources:
+  MyEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - EMWReMap
+        - !Ref AWS::Region
+        - ImageId
+      InstanceType: !FindInMap
+        - FMWEnvMap
+        - !Ref EnvironmentType
+        - Size
+      KeyName: !Ref FMWKeys
+      SecurityGroups: !If [ProdSGCond, [!Ref ProdSG ], [!Ref DevSG]]
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentType
+
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Condition: EIPCond
+    Properties:
+      InstanceId: !Ref MyEC2
+
+  ProdSG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: ProdSGCond
+    Properties:
+      GroupDescription: Only 80 port
+      GroupName: ProductionSG
+      Tags:
+        - Key: Name
+          Value: ProductionSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow 80 port is allowed
+  
+  DevSG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: DevSGCond
+    Properties:
+      GroupDescription: Only 22 port
+      GroupName: DevSG
+      Tags:
+        - Key: Name
+          Value: DevSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow 22 port is allowed
